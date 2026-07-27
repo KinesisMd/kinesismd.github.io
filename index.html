@@ -672,9 +672,11 @@ hr { border: 0; border-top: var(--border-hairline); margin: var(--space-5) 0; }
     .four li{ padding:18px 0; }
     .ln-tag{display:none;}
     .ln-node{ width:11px; height:11px; margin:-5.5px 0 0 -5.5px; box-shadow:0 0 0 5px rgba(0,160,213,.12), 0 0 16px 3px rgba(0,160,213,.4); }
-    /* thinner, calmer heartbeat trace on phones &#8212; a delicate line, not a heavy tangle */
-    .ln-live{ stroke-width:3; filter:drop-shadow(0 0 7px rgba(0,160,213,.45)); }
-    body.on-light .ln-live{ stroke-width:3; filter:drop-shadow(0 0 6px rgba(43,80,121,.4)); }
+    /* thinner + faded heartbeat trace on phones &#8212; a soft pulse behind the copy, not a heavy tangle.
+       (the beat's horizontal travel is restored in JS so it reads as a heartbeat, not a scribble) */
+    .ln-live{ stroke-width:2.6; stroke-opacity:.4; filter:drop-shadow(0 0 6px rgba(0,160,213,.32)); }
+    body.on-light .ln-live{ stroke-width:2.6; stroke-opacity:.42; filter:drop-shadow(0 0 5px rgba(43,80,121,.3)); }
+    .ln-node{ opacity:.7; }
 
     /* fixed header gets a scrim so content scrolling under the logo is masked, not overlapping it.
        theme-aware: ink on dark grounds, cream on the light arrival. */
@@ -948,9 +950,18 @@ hr { border: 0; border-top: var(--border-hairline); margin: var(--space-5) 0; }
     .pmodal.measure{display:block; visibility:hidden;}
     .pmodal.measure .pm-card{opacity:0; transform:translate(-50%,-50%) scale(1); transition:none;}
     .pmodal.choreo .pm-card{opacity:1; transform:translate(-50%,-50%) scale(1); transition:none;}
+    /* MOBILE: the whole card scrolls as one &#8212; full photo (uncropped) then full bio.
+       Desktop keeps the fixed side-by-side card (no scroll). */
     @media (max-width:680px){
-      .pm-card{grid-template-columns:1fr; grid-template-rows:230px 1fr; height:min(88vh,640px);}
-      .pm-photo{min-height:230px;}
+      .pm-card{ display:block; grid-template-columns:none; grid-template-rows:none;
+           width:min(94vw,540px); height:auto; max-height:90svh;
+           overflow-y:auto; -webkit-overflow-scrolling:touch; }
+      .pm-photo{ min-height:0; }
+      .pm-photo img{ position:static; width:100%; height:auto; object-fit:contain; }
+      .pm-scroll{ overflow:visible; padding:22px clamp(20px,6vw,28px) 32px; }
+      .pm-body{ margin:0; }
+      /* close button rides along at the top-right while you scroll (.pmodal prefix beats .km-x) */
+      .pmodal .pm-x{ position:sticky; top:10px; float:right; margin:8px 8px -48px 0; }
     }
   </style>
   <script>
@@ -987,7 +998,8 @@ hr { border: 0; border-top: var(--border-hairline); margin: var(--space-5) 0; }
       if (!art) return;
       populate(art, srcImg);
       document.body.classList.add('km-lock');
-      var canAnimate = !reduce && srcImg && !!card.animate;
+      // desktop gets the fly-into-card choreography; mobile (scrollable block card) uses a clean fade
+      var canAnimate = !reduce && srcImg && !!card.animate && innerWidth > 680;
       if (!canAnimate) { pm.classList.add('open'); return; }
       busy = true;
       try {
@@ -1348,16 +1360,17 @@ hr { border: 0; border-top: var(--border-hairline); margin: var(--space-5) 0; }
   const YS = Array.from({ length: N }, (_, i) => (i / (N - 1)) * 100);
   const PER = 14;                                 // y-units per beat (~7 beats down the view)
   let BX = 15;                                    // baseline x (% of width) -- the spine sits left
-  let AMP = 1;                                    // beat amplitude scale -- shrunk on phones so the trace keeps its own left lane
+  let AMP = 1;                                    // beat amplitude scale (horizontal travel of the beat)
+  let BOOST = 1.45;                               // extra amplitude on the name-reveal beat
   let STEPS_N = 260;                              // ECG path resolution -- fewer points on phones (lighter GPU cost)
-  // MOBILE: pull the spine to the far-left edge and calm the beats so they never collide with copy.
-  // Desktop (>820) is byte-for-byte unchanged.
+  // MOBILE: spine hugs the far-left edge, but the beat keeps a real, desktop-like horizontal TRAVEL
+  // (AMP .7) so it reads as a heartbeat -- not a scribble. It's faded via CSS so the bigger swing sits
+  // as a soft pulse behind the copy rather than colliding hard. Desktop (>820) is byte-for-byte unchanged.
   function geom() {
     const phone = innerWidth <= 820;
-    // phone: spine hugs the far-left edge (BX 5%) with calmed beats (AMP .42) so that even the
-    // amplified name-reveal beat (x1.45) peaks near ~13.5% of width -- clearing the copy lane by ~9px.
-    BX = phone ? 5 : 15;
-    AMP = phone ? 0.42 : 1;
+    BX = phone ? 3.5 : 15;
+    AMP = phone ? 0.7 : 1;
+    BOOST = phone ? 1.3 : 1.45;
     STEPS_N = phone ? 150 : 260;
   }
   geom();
@@ -1383,7 +1396,7 @@ hr { border: 0; border-top: var(--border-hairline); margin: var(--space-5) 0; }
     if (Math.abs(d) > BW) return BX;               // flat between beats
     const u = ((d + BW) / (2 * BW)) * PER;         // map the beat window onto one PQRST complex
     const AMPI = 3;                                // The Answer -- the KINESIS reveal gets the page's biggest beat
-    return BX + beatDef(u) * AMP * (k === AMPI ? 1.45 : 1);
+    return BX + beatDef(u) * AMP * (k === AMPI ? BOOST : 1);
   }
 
   /* ---------- DOM ---------- */
