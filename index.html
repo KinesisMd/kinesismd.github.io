@@ -625,8 +625,10 @@ hr { border: 0; border-top: var(--border-hairline); margin: var(--space-5) 0; }
   /* community partners &#8212; real logos, color-shifted to OUR ground (never their brand colors) */
   /* 3x2 grid: every logo centres in an equal cell, so they align on a true grid
      regardless of how wide each mark is */
-  #c-partners .plogos{display:grid; grid-template-columns:repeat(3,1fr); align-items:center; justify-items:center;
-       gap:clamp(34px,4.5vw,58px) clamp(28px,4vw,54px); margin-top:52px; max-width:880px;}
+  /* no align-items here on purpose: the default `stretch` makes every cell a
+     full-height hit target; the inner flex does the optical centring */
+  #c-partners .plogos{display:grid; grid-template-columns:repeat(3,1fr); justify-items:center;
+       gap:clamp(34px,4.5vw,58px) clamp(20px,2.5vw,34px); margin-top:52px; max-width:880px;}
   #c-partners .plogo{display:flex; align-items:center; justify-content:center; width:100%;}
   /* optical sizing: cap BOTH axes so a very wide wordmark can't dominate a compact icon */
   #c-partners .plogo img{max-height:clamp(54px,6.4vw,76px); max-width:100%; width:auto; height:auto; display:block;
