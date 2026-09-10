@@ -1843,13 +1843,35 @@ hr { border: 0; border-top: var(--border-hairline); margin: var(--space-5) 0; }
             const rise = vw <= 820 ? lerp(8, -44, pin) : lerp(70, -(vh * 0.62) - 46, pin);
             teamHead.style.transform = 'translateY(' + rise.toFixed(1) + 'px)';
           }
-          const APPROACH = 0.17;                                     // share of the sweep spent easing them in
-          const q = appr < 1 ? appr * APPROACH : APPROACH + pin * (1 - APPROACH);
+          // ---- PHONE ONLY (<=820): the first card gets a real stage -------------------
+          // A card is nearly a full viewport wide on a phone, so the desktop "already
+          // mid-stream on arrival" share of the sweep (17%) walks card one most of the
+          // way off the screen before the section has even locked. On phones the river
+          // therefore stays parked through the approach, starts with card one fully
+          // framed, and dwells at the top of the pin before it runs. Desktop is
+          // untouched: phone === false restores the original constants exactly.
+          const phone = vw <= 820;
+          const APPROACH = phone ? 0 : 0.17;                         // share of the sweep spent easing them in
+          // Phone dwell: the scrub stays flat for the first DWELL of the pin, then eases
+          // up to speed over RAMP (velocity starts at zero -- a glide, not a step).
+          // flow(0)=0 and flow(1)=1, so TOTAL travel is unchanged and the last card
+          // still clears the left edge at exactly the end of the pin.
+          const DWELL = 0.1, RAMP = 0.18;
+          let flow = pin;
+          if (phone) {
+            const t = clamp01((pin - DWELL) / (1 - DWELL));
+            const V = 1 / (1 - RAMP / 2);                            // cruise rate that still lands flow(1)=1
+            const u = t / RAMP;
+            flow = t < RAMP ? V * RAMP * (u * u * u - (u * u * u * u) / 2) : V * (t - RAMP / 2);
+          }
+          const q = appr < 1 ? appr * APPROACH : APPROACH + flow * (1 - APPROACH);
           // No opacity fade: cards stay fully solid, clipped by the stage, so you see a card the
-          // whole way until it physically leaves the page. Start with the first card already partly
-          // on-screen -- it's mid-stream the moment you arrive, never a from-zero entrance.
+          // whole way until it physically leaves the page. Desktop starts with the first card
+          // already partly on-screen -- mid-stream the moment you arrive, never a from-zero
+          // entrance. Phones instead start it WHOLE on screen (centred when it fits).
           const cw = (cards[0] && cards[0].getBoundingClientRect().width) || vw * 0.3;
-          const x0 = vw - cw * 0.34;                                 // first card ~1/3 on-screen at q=0
+          const x0 = phone ? Math.max(0, (vw - cw) / 2)              // phone: card one fully framed at q=0
+                           : vw - cw * 0.34;                         // desktop: first card ~1/3 on-screen at q=0
           const xEnd = -(trackW + vw * 0.1);                         // last card fully off the left at q=1
           const x = x0 + q * (xEnd - x0);
           track.style.transform = 'translate3d(' + x.toFixed(1) + 'px,0,0)';
